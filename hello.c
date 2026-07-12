@@ -1,64 +1,44 @@
 #include <stdint.h>
+#include <stdio.h>
+
+#include <sys/mman.h>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include <stdio.h>
-#include <sys/mman.h>
+
 #include "hello.cpp"
+#include "hello.h"
 
-static int BitmapWidth = 1024;
-static int BitmapHeight = 768;
-static int XOffset;
-static int YOffset;
 static uint8_t PixelBuffer;
-static int current_sine_sample = 0;
+static GameState gameState = {
+    .BitmapWidth = 1024,
+    .BitmapHeight = 768,
+    .current_sine_sample = 0};
 
-void direction_user_should_move()
+void direction_user_should_move(GameState *gameState)
 {
   const bool *key_states = SDL_GetKeyboardState(NULL);
 
   if (key_states[SDL_SCANCODE_D])
   {
-    XOffset += 1;
+    gameState->XOffset += 1;
   }
 
   if (key_states[SDL_SCANCODE_A])
   {
-    XOffset += -1;
+    gameState->XOffset += -1;
   }
 
   if (key_states[SDL_SCANCODE_S])
   {
-    YOffset += 1;
+    gameState->YOffset += 1;
   }
 
   if (key_states[SDL_SCANCODE_W])
   {
-    YOffset += -1;
+    gameState->YOffset += -1;
   }
 }
-
-void loadAudio(SDL_AudioStream *audioStream)
-{
-  int minBytesToStoreAudio = (8000 * sizeof(float)) / 2;
-
-  if (SDL_GetAudioStreamQueued(audioStream) < minBytesToStoreAudio)
-  {
-    static float samples[512];
-    int i;
-
-    for (i = 0; i < SDL_arraysize(samples); i++)
-    {
-      const int freq = 440;
-      const float phase = current_sine_sample * freq / 8000.0f;
-      samples[i] = SDL_sinf(phase * 2 * SDL_PI_F);
-      current_sine_sample++;
-    }
-
-    current_sine_sample %= 8000;
-
-    SDL_PutAudioStreamData(audioStream, samples, sizeof(samples));
-  }
-};
 
 int main()
 {
@@ -71,11 +51,11 @@ int main()
   bool init;
 
   init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-  window = SDL_CreateWindow("wow", BitmapWidth, BitmapHeight, SDL_WINDOW_OPENGL);
+  window = SDL_CreateWindow("wow", gameState.BitmapWidth, gameState.BitmapHeight, SDL_WINDOW_OPENGL);
   SDL_SetWindowResizable(window, true);
   renderer = SDL_CreateRenderer(window, NULL);
   uint8_t *PixelBuffer = (uint8_t *)mmap(NULL, 3145728, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  bitmapTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, BitmapWidth, BitmapHeight);
+  bitmapTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, gameState.BitmapWidth, gameState.BitmapHeight);
 
   audioDesired.freq = 8000;
   audioDesired.format = SDL_AUDIO_F32;
@@ -95,7 +75,6 @@ int main()
   while (window)
   {
     uint64_t LastCounter = SDL_GetPerformanceCounter();
-    loadAudio(audioStream);
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -112,8 +91,8 @@ int main()
       }
     }
 
-    direction_user_should_move();
-    GameUpdateAndRender(PixelBuffer, XOffset, YOffset, BitmapWidth, BitmapHeight);
+    direction_user_should_move(&gameState);
+    GameUpdateAndRender(PixelBuffer, audioStream, &gameState);
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
     SDL_RenderPresent(renderer);

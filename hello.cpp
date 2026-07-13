@@ -1,4 +1,5 @@
 #include "hello.h"
+#include <math.h>
 
 void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
 {
@@ -41,6 +42,23 @@ void LoadAudio(SDL_AudioStream *audioStream, int *current_sine_sample)
     SDL_PutAudioStreamData(audioStream, samples, sizeof(samples));
   }
 };
+
+void CreateAudioBuffer()
+{
+  int16_t samples[48000];
+  int sampleRate = 48000;
+  int lengthOfSamplesArray = (sizeof(samples) / sizeof(samples[0]));
+  int freqHz = 440;
+  int samplesPerCycle = sampleRate / freqHz;
+
+  for (int sampleIndex = 0; sampleIndex < lengthOfSamplesArray; sampleIndex++)
+  {
+    double angle = (sampleIndex * (2 * M_PI)) / samplesPerCycle;
+    double sineValue = sin(angle);
+    int16_t pcmValue = sineValue * 10000;
+    samples[sampleIndex] = pcmValue;
+  }
+}
 
 void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState)
 {

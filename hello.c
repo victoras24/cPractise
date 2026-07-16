@@ -57,11 +57,11 @@ int main()
   uint8_t *PixelBuffer = (uint8_t *)mmap(NULL, 3145728, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   bitmapTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, gameState.BitmapWidth, gameState.BitmapHeight);
 
-  audioDesired.freq = 8000;
-  audioDesired.format = SDL_AUDIO_F32;
-  audioDesired.channels = 1;
+  audioDesired.freq = 48000;
+  audioDesired.format = SDL_AUDIO_S16;
+  audioDesired.channels = 2;
 
-  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, NULL, NULL);
+  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, GenerateSizeWave, NULL);
 
   if (!window | !audioStream)
   {

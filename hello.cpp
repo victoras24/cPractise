@@ -1,6 +1,8 @@
 #include "hello.h"
 #include <math.h>
 
+static float currentPhase;
+
 void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
 {
   int Pitch = gameState->BitmapWidth * 4;
@@ -40,7 +42,32 @@ void LoadAudio(SDL_AudioStream *audioStream, int *current_sine_sample)
     (*current_sine_sample) %= 8000;
 
     SDL_PutAudioStreamData(audioStream, samples, sizeof(samples));
+  }       
+};
+
+void GenerateSizeWave(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_count) {
+  int16_t buffer[additional_amount/2];
+  int sampleRate = 48000;
+  int16_t frequencyHz = 440;
+  int16_t frameCount = additional_amount / (sizeof(int16_t) * 2);
+  float samplesPerCycle = sampleRate / frequencyHz;
+  int16_t volume = 10000;
+  double phaseIncrement = (M_PI * 2) / samplesPerCycle;
+
+  for (size_t i = 0; i < frameCount; i++)
+  {
+    double sinValue = sin(currentPhase);
+    int16_t pcmValue = sinValue * volume;
+
+    buffer[i*2] = pcmValue;
+    buffer[(i*2)+1] = pcmValue;
+
+    currentPhase += phaseIncrement;
+    if (currentPhase >= M_PI * 2) currentPhase -= M_PI * 2;  
   }
+
+   SDL_PutAudioStreamData(stream, buffer, frameCount * 2 * sizeof(int16_t)
+);
 };
 
 void CreateAudioBuffer()
@@ -62,6 +89,5 @@ void CreateAudioBuffer()
 
 void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState)
 {
-  LoadAudio(audioStream, &gameState->current_sine_sample);
   RenderWeirdGradientBoxes(Buffer, gameState);
 };

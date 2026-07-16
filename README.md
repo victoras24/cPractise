@@ -29,4 +29,12 @@ This variable will help us to calculate the value for each sample. So we will lo
       samples[i] = sinValue * 10000;
     };
 
+- important c concept: when you cast to a buffer a specific type, for example 16bit integer, it goes and does the below 
+buffer[0] -> bytes 0x1000-0x1001
+buffer[1] -> bytes 0x1002-0x1003
+notice that the memory it self does not change, but the compiler's interpatation of memory changes.
+if we casted the buffer to a float, then the below would happened
+buffer[0] -> bytes 0x1000-0x1003
+buffer[1] -> bytes 0x1004-0x1007
+
 

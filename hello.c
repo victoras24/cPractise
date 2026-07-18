@@ -15,31 +15,6 @@ static GameState gameState = {
     .BitmapHeight = 768,
     .current_sine_sample = 0};
 
-void direction_user_should_move(GameState *gameState)
-{
-  const bool *key_states = SDL_GetKeyboardState(NULL);
-
-  if (key_states[SDL_SCANCODE_D])
-  {
-    gameState->XOffset += 1;
-  }
-
-  if (key_states[SDL_SCANCODE_A])
-  {
-    gameState->XOffset += -1;
-  }
-
-  if (key_states[SDL_SCANCODE_S])
-  {
-    gameState->YOffset += 1;
-  }
-
-  if (key_states[SDL_SCANCODE_W])
-  {
-    gameState->YOffset += -1;
-  }
-}
-
 int main()
 {
   SDL_Window *window;
@@ -91,7 +66,8 @@ int main()
       }
     }
 
-    direction_user_should_move(&gameState);
+    const bool *key_states = SDL_GetKeyboardState(NULL);
+    direction_user_should_move(&gameState, key_states, SDL_SCANCODE_D, SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_W);
     GameUpdateAndRender(PixelBuffer, audioStream, &gameState);
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);

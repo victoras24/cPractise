@@ -22,6 +22,29 @@ void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
   }
 };
 
+void direction_user_should_move(GameState *GameState, const bool *KeyStates, int8_t Key_D, int8_t Key_A, int8_t Key_S, int8_t Key_W)
+{
+  if (KeyStates[Key_D])
+  {
+    GameState->XOffset += 1;
+  }
+
+  if (KeyStates[Key_A])
+  {
+    GameState->XOffset += -1;
+  }
+
+  if (KeyStates[Key_S])
+  {
+    GameState->YOffset += 1;
+  }
+
+  if (KeyStates[Key_W])
+  {
+    GameState->YOffset += -1;
+  }
+}
+
 void LoadAudio(SDL_AudioStream *audioStream, int *current_sine_sample)
 {
   int minBytesToStoreAudio = (8000 * sizeof(float)) / 2;

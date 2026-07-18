@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <SDL3/SDL_audio.h>
 
-typedef struct GameState
+typedef struct
 {
   int XOffset;
   int YOffset;

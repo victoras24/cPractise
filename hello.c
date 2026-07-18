@@ -84,8 +84,7 @@ int main()
     }
 
     KeyboardInputAction InputAction = sdl_key_inputs();
-    direction_user_should_move(&gameState, &InputAction);
-    GameUpdateAndRender(PixelBuffer, audioStream, &gameState);
+    GameUpdateAndRender(PixelBuffer, audioStream, &gameState, &InputAction);
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
     SDL_RenderPresent(renderer);

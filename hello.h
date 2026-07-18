@@ -20,6 +20,6 @@ typedef struct KeyboardInputAction {
   uint8_t MoveUp;
 } KeyboardInputAction;
 
-void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState);
+void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState, KeyboardInputAction *Input);
 
 #endif

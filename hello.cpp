@@ -110,7 +110,8 @@ void CreateAudioBuffer()
   }
 }
 
-void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState)
+void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState, KeyboardInputAction *Input)
 {
+  direction_user_should_move(gameState, Input);
   RenderWeirdGradientBoxes(Buffer, gameState);
 };

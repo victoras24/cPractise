@@ -15,6 +15,23 @@ static GameState gameState = {
     .BitmapHeight = 768,
     .current_sine_sample = 0};
 
+bool sdl_is_key_state(const bool *key_states, enum SDL_Scancode ScanCode) {
+  return key_states[ScanCode] ? 1 : 0;
+};
+
+KeyboardInputAction sdl_key_inputs() {
+    const bool *key_states = SDL_GetKeyboardState(NULL);
+    
+     KeyboardInputAction input = {
+      .MoveRight = sdl_is_key_state(key_states, SDL_SCANCODE_D),
+      .MoveLeft = sdl_is_key_state(key_states, SDL_SCANCODE_A),
+      .MoveDown = sdl_is_key_state(key_states, SDL_SCANCODE_S),
+      .MoveUp = sdl_is_key_state(key_states, SDL_SCANCODE_W)
+    };
+
+    return input;
+}
+
 int main()
 {
   SDL_Window *window;
@@ -66,8 +83,8 @@ int main()
       }
     }
 
-    const bool *key_states = SDL_GetKeyboardState(NULL);
-    direction_user_should_move(&gameState, key_states, SDL_SCANCODE_D, SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_W);
+    KeyboardInputAction InputAction = sdl_key_inputs();
+    direction_user_should_move(&gameState, &InputAction);
     GameUpdateAndRender(PixelBuffer, audioStream, &gameState);
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);

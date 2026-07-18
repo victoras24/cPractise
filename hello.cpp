@@ -22,24 +22,24 @@ void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
   }
 };
 
-void direction_user_should_move(GameState *GameState, const bool *KeyStates, int8_t Key_D, int8_t Key_A, int8_t Key_S, int8_t Key_W)
+void direction_user_should_move(GameState *GameState, KeyboardInputAction *InputAction)
 {
-  if (KeyStates[Key_D])
+  if (InputAction->MoveRight)
   {
     GameState->XOffset += 1;
   }
 
-  if (KeyStates[Key_A])
+  if (InputAction->MoveLeft)
   {
     GameState->XOffset += -1;
   }
 
-  if (KeyStates[Key_S])
+  if (InputAction->MoveDown)
   {
     GameState->YOffset += 1;
   }
 
-  if (KeyStates[Key_W])
+  if (InputAction->MoveUp)
   {
     GameState->YOffset += -1;
   }

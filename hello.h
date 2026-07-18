@@ -13,6 +13,13 @@ typedef struct
   int current_sine_sample;
 } GameState;
 
+typedef struct KeyboardInputAction {
+  uint8_t MoveRight;
+  uint8_t MoveLeft;
+  uint8_t MoveDown;
+  uint8_t MoveUp;
+} KeyboardInputAction;
+
 void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState);
 
 #endif

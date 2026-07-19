@@ -37,4 +37,4 @@ if we casted the buffer to a float, then the below would happened
 buffer[0] -> bytes 0x1000-0x1003
 buffer[1] -> bytes 0x1004-0x1007
 
-
+- seperation of platform layer and game layer. for example for keyboard inputs, the platform layer should inform the game layer what action should be done. 

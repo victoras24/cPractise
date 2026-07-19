@@ -13,13 +13,19 @@ typedef struct
   int current_sine_sample;
 } GameState;
 
-typedef struct KeyboardInputAction {
+typedef struct {
   uint8_t MoveRight;
   uint8_t MoveLeft;
   uint8_t MoveDown;
   uint8_t MoveUp;
 } KeyboardInputAction;
 
-void GameUpdateAndRender(uint8_t *Buffer, SDL_AudioStream *audioStream, GameState *gameState, KeyboardInputAction *Input);
+typedef struct {
+  int16_t *samples;
+  int sampleRate;
+  int frameCount;
+} SoundBuffer;
+
+void GameUpdateAndRender(uint8_t *Buffer, GameState *gameState, KeyboardInputAction *Input);
 
 #endif

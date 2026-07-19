@@ -30,7 +30,19 @@ KeyboardInputAction sdl_key_inputs() {
     };
 
     return input;
-}
+};
+
+void sdl_generate_audio(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_count)
+{
+    SoundBuffer sound_buffer = {
+      .frameCount = additional_amount / (sizeof(int16_t) * 2),
+      .samples = (int16_t *)mmap(NULL, additional_amount * sizeof(int16_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0), // check the reason!
+      .sampleRate = 48000
+    };
+
+    SoundBuffer *game_sound_buffer = GenerateGameSoundBuffer(&sound_buffer);
+    SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
+};
 
 int main()
 {
@@ -53,7 +65,7 @@ int main()
   audioDesired.format = SDL_AUDIO_S16;
   audioDesired.channels = 2;
 
-  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, GenerateSizeWave, NULL);
+  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, sdl_generate_audio, NULL);
 
   if (!window | !audioStream)
   {
@@ -67,7 +79,9 @@ int main()
   while (window)
   {
     uint64_t LastCounter = SDL_GetPerformanceCounter();
+
     SDL_Event event;
+
     while (SDL_PollEvent(&event))
     {
       switch (event.type)
@@ -84,7 +98,7 @@ int main()
     }
 
     KeyboardInputAction InputAction = sdl_key_inputs();
-    GameUpdateAndRender(PixelBuffer, audioStream, &gameState, &InputAction);
+    GameUpdateAndRender(PixelBuffer, &gameState, &InputAction);
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
     SDL_RenderPresent(renderer);

@@ -11,21 +11,29 @@ typedef struct
   int BitmapWidth;
   int BitmapHeight;
   int current_sine_sample;
-} GameState;
+} game_state;
 
-typedef struct {
-  uint8_t MoveRight;
-  uint8_t MoveLeft;
-  uint8_t MoveDown;
-  uint8_t MoveUp;
-} KeyboardInputAction;
+typedef struct
+{
+  int HalfTransitionCount;
+  bool IsEndedDown;
+} key_state;
 
-typedef struct {
+typedef struct
+{
+  key_state MoveRight;
+  key_state MoveLeft;
+  key_state MoveDown;
+  key_state MoveUp;
+} keyboard_input_action;
+
+typedef struct
+{
   int16_t *samples;
   int sampleRate;
   int frameCount;
-} SoundBuffer;
+} game_sound_buffer;
 
-void GameUpdateAndRender(uint8_t *Buffer, GameState *gameState, KeyboardInputAction *Input);
+void GameUpdateAndRender(uint8_t *Buffer, game_state *gameState, keyboard_input_action *NewInput, keyboard_input_action *OldInput);
 
 #endif

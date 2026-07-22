@@ -3,7 +3,7 @@
 
 static float currentPhase;
 
-void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
+void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
 {
   int Pitch = gameState->BitmapWidth * 4;
   uint8_t *Row = (uint8_t *)pixelBuffer;
@@ -22,53 +22,54 @@ void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, GameState *gameState)
   }
 };
 
-void direction_user_should_move(GameState *GameState, KeyboardInputAction *InputAction)
+void direction_user_should_move(game_state *game_state, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
 {
-  if (InputAction->MoveRight)
+  if (NewInput->MoveRight.IsEndedDown)
   {
-    GameState->XOffset += 1;
+    game_state->XOffset += 1;
   }
 
-  if (InputAction->MoveLeft)
+  if (NewInput->MoveLeft.IsEndedDown)
   {
-    GameState->XOffset += -1;
+    game_state->XOffset += -1;
   }
 
-  if (InputAction->MoveDown)
+  if (NewInput->MoveDown.IsEndedDown)
   {
-    GameState->YOffset += 1;
+    game_state->YOffset += 1;
   }
 
-  if (InputAction->MoveUp)
+  if (NewInput->MoveUp.IsEndedDown)
   {
-    GameState->YOffset += -1;
+    game_state->YOffset += -1;
   }
 }
 
-SoundBuffer *GenerateGameSoundBuffer(SoundBuffer *sound_buffer)
+game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer)
 {
   int16_t frequencyHz = 440;
   float samplesPerCycle = sound_buffer->sampleRate / frequencyHz;
   uint16_t volume = 10000;
   double phaseIncrement = (M_PI * 2) / samplesPerCycle;
 
-   for (size_t i = 0; i < sound_buffer->frameCount; i++)
+  for (size_t i = 0; i < sound_buffer->frameCount; i++)
   {
     double sinValue = sin(currentPhase);
     int16_t pcmValue = sinValue * volume;
 
-    sound_buffer->samples[i*2] = pcmValue;
-    sound_buffer->samples[(i*2)+1] = pcmValue;
+    sound_buffer->samples[i * 2] = pcmValue;
+    sound_buffer->samples[(i * 2) + 1] = pcmValue;
 
     currentPhase += phaseIncrement;
-    if (currentPhase >= M_PI * 2) currentPhase -= M_PI * 2;  
+    if (currentPhase >= M_PI * 2)
+      currentPhase -= M_PI * 2;
   }
 
   return sound_buffer;
 }
 
-void GameUpdateAndRender(uint8_t *Buffer, GameState *gameState, KeyboardInputAction *Input)
+void GameUpdateAndRender(uint8_t *Buffer, game_state *gameState, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
 {
-  direction_user_should_move(gameState, Input);
+  direction_user_should_move(gameState, NewInput, OldInput);
   RenderWeirdGradientBoxes(Buffer, gameState);
 };

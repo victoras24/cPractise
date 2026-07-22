@@ -10,38 +10,26 @@
 #include "hello.h"
 
 static uint8_t PixelBuffer;
-static GameState gameState = {
+static game_state gameState = {
     .BitmapWidth = 1024,
     .BitmapHeight = 768,
     .current_sine_sample = 0};
 
-bool sdl_is_key_state(const bool *key_states, enum SDL_Scancode ScanCode) {
-  return key_states[ScanCode] ? 1 : 0;
-};
-
-KeyboardInputAction sdl_key_inputs() {
-    const bool *key_states = SDL_GetKeyboardState(NULL);
-    
-     KeyboardInputAction input = {
-      .MoveRight = sdl_is_key_state(key_states, SDL_SCANCODE_D),
-      .MoveLeft = sdl_is_key_state(key_states, SDL_SCANCODE_A),
-      .MoveDown = sdl_is_key_state(key_states, SDL_SCANCODE_S),
-      .MoveUp = sdl_is_key_state(key_states, SDL_SCANCODE_W)
-    };
-
-    return input;
+void processKeyboardInputState(key_state *NewState, key_state *OldState, bool down)
+{
+  NewState->IsEndedDown = down;
+  NewState->HalfTransitionCount = (NewState->IsEndedDown != OldState->IsEndedDown) ? 1 : 0;
 };
 
 void sdl_generate_audio(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_count)
 {
-    SoundBuffer sound_buffer = {
+  game_sound_buffer sound_buffer = {
       .frameCount = additional_amount / (sizeof(int16_t) * 2),
       .samples = (int16_t *)mmap(NULL, additional_amount * sizeof(int16_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0), // check the reason!
-      .sampleRate = 48000
-    };
+      .sampleRate = 48000};
 
-    SoundBuffer *game_sound_buffer = GenerateGameSoundBuffer(&sound_buffer);
-    SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
+  game_sound_buffer *game_sound_buffer = GenerateGameSoundBuffer(&sound_buffer);
+  SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
 };
 
 int main()
@@ -76,14 +64,70 @@ int main()
 
   uint64_t PerfCountFrequency = SDL_GetPerformanceFrequency();
 
+  keyboard_input_action Input[2] = {};
+  keyboard_input_action *OldInput = &Input[0];
+  keyboard_input_action *CurrentInput = &Input[1];
+
   while (window)
   {
     uint64_t LastCounter = SDL_GetPerformanceCounter();
-
     SDL_Event event;
+
+    // 1) Frame started with the button up or down?
+    // 2) Half transition count.
+    // 3) Frame ended with the button up or down?
+    *CurrentInput = *OldInput;
+    CurrentInput->MoveDown.HalfTransitionCount = 0;
+    CurrentInput->MoveUp.HalfTransitionCount = 0;
+    CurrentInput->MoveRight.HalfTransitionCount = 0;
+    CurrentInput->MoveLeft.HalfTransitionCount = 0;
 
     while (SDL_PollEvent(&event))
     {
+
+      if (event.key.type == SDL_EVENT_KEY_DOWN)
+      {
+        bool isDown = true;
+        switch (event.key.scancode)
+        {
+        case SDL_SCANCODE_D:
+          processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
+          break;
+        case SDL_SCANCODE_A:
+          processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
+          break;
+        case SDL_SCANCODE_S:
+          processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
+          break;
+        case SDL_SCANCODE_W:
+          processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
+          break;
+        default:
+          break;
+        }
+      }
+      else if (event.key.type == SDL_EVENT_KEY_UP)
+      {
+        bool isDown = false;
+        switch (event.key.scancode)
+        {
+        case SDL_SCANCODE_D:
+          processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
+          break;
+        case SDL_SCANCODE_A:
+          processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
+          break;
+        case SDL_SCANCODE_S:
+          processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
+          break;
+        case SDL_SCANCODE_W:
+          processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
+          break;
+        default:
+          break;
+        }
+      }
+
       switch (event.type)
       {
       case SDL_EVENT_QUIT:
@@ -97,15 +141,18 @@ int main()
       }
     }
 
-    KeyboardInputAction InputAction = sdl_key_inputs();
-    GameUpdateAndRender(PixelBuffer, &gameState, &InputAction);
+    GameUpdateAndRender(PixelBuffer, &gameState, CurrentInput, OldInput);
+
+    keyboard_input_action *SecTemp = CurrentInput;
+    CurrentInput = OldInput;
+    OldInput = SecTemp;
     SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
     SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
     SDL_RenderPresent(renderer);
     uint64_t EndCounter = SDL_GetPerformanceCounter();
     uint64_t CounterElapsed = EndCounter - LastCounter;
-    double MSPerFrame = ((1000.0 * (double)CounterElapsed) / (double)PerfCountFrequency);
-    double FPS = (double)PerfCountFrequency / (double)CounterElapsed;
+    float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)PerfCountFrequency);
+    float FPS = (float)PerfCountFrequency / (float)CounterElapsed;
     // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaaaaggggs
   }
 

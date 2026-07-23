@@ -1,6 +1,13 @@
 #include "hello.h"
 #include <math.h>
 
+#if !defined(HANDMADE_H)
+#define Kilobytes(Value) ((Value) * 1024LL)
+#define Megabytes(Value) (Kilobytes(Value) * 1024LL)
+#define Gigabytes(Value) (Megabytes(Value) * 1024LL)
+#define Terabytes(Value) (Gigabytes(Value) * 1024LL)
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
 static float currentPhase;
 
 void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
@@ -68,8 +75,20 @@ game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer)
   return sound_buffer;
 }
 
-void GameUpdateAndRender(uint8_t *Buffer, game_state *gameState, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
+void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
 {
-  direction_user_should_move(gameState, NewInput, OldInput);
-  RenderWeirdGradientBoxes(Buffer, gameState);
+  game_state *GameState = (game_state*)GameMemory->PermanentStorage;
+
+  if (!GameMemory->IsInitialiazed) {
+    GameState->XOffset = 0;
+    GameState->YOffset = 0;
+    GameState->BitmapWidth = 1024;
+    GameState->BitmapHeight = 768;
+
+    GameMemory-> IsInitialiazed = true;
+  }
+
+  direction_user_should_move(GameState, NewInput, OldInput);
+  RenderWeirdGradientBoxes(Buffer, GameState);
 };
+#endif;

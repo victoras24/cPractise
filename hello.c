@@ -10,10 +10,6 @@
 #include "hello.h"
 
 static uint8_t PixelBuffer;
-static game_state gameState = {
-    .BitmapWidth = 1024,
-    .BitmapHeight = 768,
-    .current_sine_sample = 0};
 
 void processKeyboardInputState(key_state *NewState, key_state *OldState, bool down)
 {
@@ -39,15 +35,14 @@ int main()
   SDL_Texture *bitmapTexture;
   SDL_AudioSpec audioDesired;
   SDL_AudioStream *audioStream;
-
   bool init;
 
   init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-  window = SDL_CreateWindow("wow", gameState.BitmapWidth, gameState.BitmapHeight, SDL_WINDOW_OPENGL);
+  window = SDL_CreateWindow("wow", 1024, 768, SDL_WINDOW_OPENGL);
   SDL_SetWindowResizable(window, true);
   renderer = SDL_CreateRenderer(window, NULL);
   uint8_t *PixelBuffer = (uint8_t *)mmap(NULL, 3145728, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  bitmapTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, gameState.BitmapWidth, gameState.BitmapHeight);
+  bitmapTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 1024, 768);
 
   audioDesired.freq = 48000;
   audioDesired.format = SDL_AUDIO_S16;
@@ -64,96 +59,107 @@ int main()
 
   uint64_t PerfCountFrequency = SDL_GetPerformanceFrequency();
 
-  keyboard_input_action Input[2] = {};
-  keyboard_input_action *OldInput = &Input[0];
-  keyboard_input_action *CurrentInput = &Input[1];
+  game_memory GameMemory = {};
+  GameMemory.PermanentStorageSize = Megabytes(64);
+  GameMemory.TransientStorageSize = Gigabytes(2);
 
-  while (window)
+  GameMemory.PermanentStorage = mmap(NULL, GameMemory.PermanentStorageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  GameMemory.TransientStorage = mmap(NULL, GameMemory.TransientStorageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+  if (GameMemory.PermanentStorage && GameMemory.TransientStorage)
   {
-    uint64_t LastCounter = SDL_GetPerformanceCounter();
-    SDL_Event event;
 
-    // 1) Frame started with the button up or down?
-    // 2) Half transition count.
-    // 3) Frame ended with the button up or down?
-    *CurrentInput = *OldInput;
-    CurrentInput->MoveDown.HalfTransitionCount = 0;
-    CurrentInput->MoveUp.HalfTransitionCount = 0;
-    CurrentInput->MoveRight.HalfTransitionCount = 0;
-    CurrentInput->MoveLeft.HalfTransitionCount = 0;
+    keyboard_input_action Input[2] = {};
+    keyboard_input_action *OldInput = &Input[0];
+    keyboard_input_action *CurrentInput = &Input[1];
 
-    while (SDL_PollEvent(&event))
+    while (window)
     {
+      uint64_t LastCounter = SDL_GetPerformanceCounter();
+      SDL_Event event;
 
-      if (event.key.type == SDL_EVENT_KEY_DOWN)
+      // 1) Frame started with the button up or down?
+      // 2) Half transition count.
+      // 3) Frame ended with the button up or down?
+      *CurrentInput = *OldInput;
+      CurrentInput->MoveDown.HalfTransitionCount = 0;
+      CurrentInput->MoveUp.HalfTransitionCount = 0;
+      CurrentInput->MoveRight.HalfTransitionCount = 0;
+      CurrentInput->MoveLeft.HalfTransitionCount = 0;
+
+      while (SDL_PollEvent(&event))
       {
-        bool isDown = true;
-        switch (event.key.scancode)
+
+        if (event.key.type == SDL_EVENT_KEY_DOWN)
         {
-        case SDL_SCANCODE_D:
-          processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
-          break;
-        case SDL_SCANCODE_A:
-          processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
-          break;
-        case SDL_SCANCODE_S:
-          processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
-          break;
-        case SDL_SCANCODE_W:
-          processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
-          break;
-        default:
-          break;
+          bool isDown = true;
+          switch (event.key.scancode)
+          {
+          case SDL_SCANCODE_D:
+            processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
+            break;
+          case SDL_SCANCODE_A:
+            processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
+            break;
+          case SDL_SCANCODE_S:
+            processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
+            break;
+          case SDL_SCANCODE_W:
+            processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
+            break;
+          default:
+            break;
+          }
         }
-      }
-      else if (event.key.type == SDL_EVENT_KEY_UP)
-      {
-        bool isDown = false;
-        switch (event.key.scancode)
+        else if (event.key.type == SDL_EVENT_KEY_UP)
         {
-        case SDL_SCANCODE_D:
-          processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
-          break;
-        case SDL_SCANCODE_A:
-          processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
-          break;
-        case SDL_SCANCODE_S:
-          processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
-          break;
-        case SDL_SCANCODE_W:
-          processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
-          break;
-        default:
-          break;
+          bool isDown = false;
+          switch (event.key.scancode)
+          {
+          case SDL_SCANCODE_D:
+            processKeyboardInputState(&CurrentInput->MoveRight, &OldInput->MoveRight, isDown);
+            break;
+          case SDL_SCANCODE_A:
+            processKeyboardInputState(&CurrentInput->MoveLeft, &OldInput->MoveLeft, isDown);
+            break;
+          case SDL_SCANCODE_S:
+            processKeyboardInputState(&CurrentInput->MoveDown, &OldInput->MoveDown, isDown);
+            break;
+          case SDL_SCANCODE_W:
+            processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
+            break;
+          default:
+            break;
+          }
         }
-      }
 
-      switch (event.type)
-      {
-      case SDL_EVENT_QUIT:
-      {
-        window = NULL;
-      }
-      break;
-
-      default:
+        switch (event.type)
+        {
+        case SDL_EVENT_QUIT:
+        {
+          window = NULL;
+        }
         break;
+
+        default:
+          break;
+        }
       }
+
+      GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput, OldInput);
+
+      keyboard_input_action *TemporaryPointer = CurrentInput;
+      CurrentInput = OldInput;
+      OldInput = TemporaryPointer;
+      SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
+      SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
+      SDL_RenderPresent(renderer);
+      uint64_t EndCounter = SDL_GetPerformanceCounter();
+      uint64_t CounterElapsed = EndCounter - LastCounter;
+      float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)PerfCountFrequency);
+      float FPS = (float)PerfCountFrequency / (float)CounterElapsed;
+      // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaaaaggggs
     }
-
-    GameUpdateAndRender(PixelBuffer, &gameState, CurrentInput, OldInput);
-
-    keyboard_input_action *SecTemp = CurrentInput;
-    CurrentInput = OldInput;
-    OldInput = SecTemp;
-    SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
-    SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-    uint64_t EndCounter = SDL_GetPerformanceCounter();
-    uint64_t CounterElapsed = EndCounter - LastCounter;
-    float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)PerfCountFrequency);
-    float FPS = (float)PerfCountFrequency / (float)CounterElapsed;
-    // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaaaaggggs
   }
 
   return 0;

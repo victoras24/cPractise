@@ -10,7 +10,7 @@ typedef struct
   int YOffset;
   int BitmapWidth;
   int BitmapHeight;
-  int current_sine_sample;
+  int ToneHz;
 } game_state;
 
 typedef struct
@@ -34,6 +34,15 @@ typedef struct
   int frameCount;
 } game_sound_buffer;
 
-void GameUpdateAndRender(uint8_t *Buffer, game_state *gameState, keyboard_input_action *NewInput, keyboard_input_action *OldInput);
+typedef struct
+{
+  uint64_t PermanentStorageSize;
+  void *PermanentStorage;
+  uint64_t TransientStorageSize;
+  void *TransientStorage;
+  bool IsInitialiazed;
+} game_memory;
+
+void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_input_action *NewInput, keyboard_input_action *OldInput);
 
 #endif

@@ -4,6 +4,18 @@
 #include <stdint.h>
 #include <SDL3/SDL_audio.h>
 
+#if SLOW_APP
+#define Assert(Expression) \
+  do {                     \
+    if (!(Expression))    \
+    {                     \
+      __builtin_trap();   \
+    }                     \
+  } while (0)
+#else
+#define Assert(Expression)
+#endif
+
 typedef struct
 {
   int XOffset;

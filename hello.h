@@ -29,9 +29,9 @@ typedef struct
   uint32_t ContentsSize;
 } read_file_data;
 
-read_file_data PlatformReadExistingFile(char *FileLocation);
+read_file_data PlatformReadExistingFile(const char *FileLocation);
 void PlatformFreeFileMemory(read_file_data FileData);
-bool PlatformWriteEntireFile(char *Filename, void *Contents, uint32_t ContentsSize);
+bool PlatformWriteEntireFile(const char *Filename, void *Contents, uint32_t ContentsSize);
 
 typedef struct
 {
@@ -54,7 +54,7 @@ typedef struct
   key_state MoveLeft;
   key_state MoveDown;
   key_state MoveUp;
-} keyboard_input_action;
+} game_input;
 
 typedef struct
 {
@@ -72,6 +72,6 @@ typedef struct
   bool IsInitialiazed;
 } game_memory;
 
-void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_input_action *NewInput, keyboard_input_action *OldInput);
+void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, game_input *NewInput);
 
 #endif

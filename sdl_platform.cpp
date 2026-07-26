@@ -19,7 +19,7 @@ void PlatformFreeFileMemory(read_file_data FileData)
   }
 };
 
-read_file_data PlatformReadExistingFile(char *FileLocation)
+read_file_data PlatformReadExistingFile(const char *FileLocation)
 {
   read_file_data FileData = {};
   FILE *File = fopen(FileLocation, "rb");
@@ -49,7 +49,7 @@ read_file_data PlatformReadExistingFile(char *FileLocation)
   return FileData;
 };
 
-bool PlatformWriteEntireFile(char *FileLocation, void *Contents, uint32_t ContentsSize)
+bool PlatformWriteEntireFile(const char *FileLocation, void *Contents, uint32_t ContentsSize)
 {
   bool Result = false;
 
@@ -131,9 +131,9 @@ int main()
   if (GameMemory.PermanentStorage && GameMemory.TransientStorage)
   {
 
-    keyboard_input_action Input[2] = {};
-    keyboard_input_action *OldInput = &Input[0];
-    keyboard_input_action *CurrentInput = &Input[1];
+    game_input Input[2] = {};
+    game_input *OldInput = &Input[0];
+    game_input *CurrentInput = &Input[1];
 
     while (window)
     {
@@ -208,9 +208,9 @@ int main()
         }
       }
 
-      GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput, OldInput);
+      GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput);
 
-      keyboard_input_action *TemporaryPointer = CurrentInput;
+      game_input *TemporaryPointer = CurrentInput;
       CurrentInput = OldInput;
       OldInput = TemporaryPointer;
       SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);

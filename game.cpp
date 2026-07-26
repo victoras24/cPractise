@@ -22,7 +22,7 @@ void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
   }
 };
 
-void direction_user_should_move(game_state *game_state, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
+void direction_user_should_move(game_state *game_state, game_input *NewInput)
 {
   if (NewInput->MoveRight.IsEndedDown)
   {
@@ -52,7 +52,7 @@ game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer)
   uint16_t volume = 10000;
   double phaseIncrement = (M_PI * 2) / samplesPerCycle;
 
-  for (size_t i = 0; i < sound_buffer->frameCount; i++)
+  for (int i = 0; i < sound_buffer->frameCount; i++)
   {
     double sinValue = sin(currentPhase);
     int16_t pcmValue = sinValue * volume;
@@ -68,7 +68,7 @@ game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer)
   return sound_buffer;
 }
 
-void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
+void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, game_input *NewInput)
 {
   read_file_data File = PlatformReadExistingFile("/Users/zebra/personal/cPractise/hello.cpp");
 
@@ -90,6 +90,6 @@ void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_inpu
     GameMemory->IsInitialiazed = true;
   }
 
-  direction_user_should_move(GameState, NewInput, OldInput);
+  direction_user_should_move(GameState, NewInput);
   RenderWeirdGradientBoxes(Buffer, GameState);
 };

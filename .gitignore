@@ -3,4 +3,10 @@ build
 vendored
 build.sh
 platform
-platform.dSYM
+sdl_platform.dSYM
+sdl_platform.dylib
+sdl_platform.dll
+Info.plist
+platform.yml
+sdl_platform
+test.out

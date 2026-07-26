@@ -1,12 +1,6 @@
 #include "hello.h"
 #include <math.h>
 
-#define Kilobytes(Value) ((Value) * 1024LL)
-#define Megabytes(Value) (Kilobytes(Value) * 1024LL)
-#define Gigabytes(Value) (Megabytes(Value) * 1024LL)
-#define Terabytes(Value) (Gigabytes(Value) * 1024LL)
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-
 static float currentPhase;
 
 void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
@@ -76,7 +70,13 @@ game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer)
 
 void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, keyboard_input_action *NewInput, keyboard_input_action *OldInput)
 {
-  Assert(sizeof(game_state) <= GameMemory->PermanentStorageSize);
+  read_file_data File = PlatformReadExistingFile("/Users/zebra/personal/cPractise/hello.cpp");
+
+  if (File.Contents)
+  {
+    PlatformWriteEntireFile("/Users/zebra/personal/cPractise/test.out", File.Contents, File.ContentsSize);
+    PlatformFreeFileMemory(File);
+  }
 
   game_state *GameState = (game_state *)GameMemory->PermanentStorage;
 

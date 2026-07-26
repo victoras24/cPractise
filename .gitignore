@@ -1,5 +1,6 @@
 .vscode
 build
-hello.dSYM
 vendored
-CMakeLists.txt
+build.sh
+platform
+platform.dSYM

@@ -4,17 +4,34 @@
 #include <stdint.h>
 #include <SDL3/SDL_audio.h>
 
+#define Kilobytes(Value) ((Value) * 1024LL)
+#define Megabytes(Value) (Kilobytes(Value) * 1024LL)
+#define Gigabytes(Value) (Megabytes(Value) * 1024LL)
+#define Terabytes(Value) (Gigabytes(Value) * 1024LL)
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
 #if SLOW_APP
 #define Assert(Expression) \
-  do {                     \
-    if (!(Expression))    \
-    {                     \
-      __builtin_trap();   \
-    }                     \
+  do                       \
+  {                        \
+    if (!(Expression))     \
+    {                      \
+      __builtin_trap();    \
+    }                      \
   } while (0)
 #else
 #define Assert(Expression)
 #endif
+
+typedef struct
+{
+  void *Contents;
+  uint32_t ContentsSize;
+} read_file_data;
+
+read_file_data PlatformReadExistingFile(char *FileLocation);
+void PlatformFreeFileMemory(read_file_data FileData);
+bool PlatformWriteEntireFile(char *Filename, void *Contents, uint32_t ContentsSize);
 
 typedef struct
 {

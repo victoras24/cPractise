@@ -6,10 +6,72 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#include "hello.cpp"
+#include "game.cpp"
 #include "hello.h"
 
-static uint8_t PixelBuffer;
+void PlatformFreeFileMemory(read_file_data FileData)
+{
+  if (FileData.Contents)
+  {
+    munmap(FileData.Contents, FileData.ContentsSize);
+    FileData.Contents = NULL;
+    FileData.ContentsSize = 0;
+  }
+};
+
+read_file_data PlatformReadExistingFile(char *FileLocation)
+{
+  read_file_data FileData = {};
+  FILE *File = fopen(FileLocation, "rb");
+  if (File)
+  {
+    fseek(File, 0L, SEEK_END);
+    FileData.ContentsSize = ftell(File);
+
+    rewind(File);
+
+    if (FileData.ContentsSize > 0)
+      FileData.Contents = mmap(NULL, FileData.ContentsSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (FileData.Contents)
+    {
+      size_t BytesRead = fread(FileData.Contents, 1, FileData.ContentsSize, File);
+
+      if (BytesRead != FileData.ContentsSize)
+      {
+        PlatformFreeFileMemory(FileData);
+      }
+    }
+
+    fclose(File);
+  }
+
+  return FileData;
+};
+
+bool PlatformWriteEntireFile(char *FileLocation, void *Contents, uint32_t ContentsSize)
+{
+  bool Result = false;
+
+  FILE *File = fopen(FileLocation, "wb");
+
+  if (File)
+  {
+    if (Contents && ContentsSize > 0)
+    {
+      size_t BytesWritten = fwrite(Contents, 1, ContentsSize, File);
+
+      if (BytesWritten == ContentsSize)
+      {
+        Result = true;
+      }
+    }
+
+    fclose(File);
+  }
+
+  return Result;
+}
 
 void processKeyboardInputState(key_state *NewState, key_state *OldState, bool down)
 {
@@ -20,9 +82,9 @@ void processKeyboardInputState(key_state *NewState, key_state *OldState, bool do
 void sdl_generate_audio(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_count)
 {
   game_sound_buffer sound_buffer = {
-      .frameCount = additional_amount / (sizeof(int16_t) * 2),
       .samples = (int16_t *)mmap(NULL, additional_amount * sizeof(int16_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0), // check the reason!
-      .sampleRate = 48000};
+      .sampleRate = 48000,
+      .frameCount = (int)(additional_amount / (sizeof(int16_t) * 2))};
 
   game_sound_buffer *game_sound_buffer = GenerateGameSoundBuffer(&sound_buffer);
   SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
@@ -35,9 +97,8 @@ int main()
   SDL_Texture *bitmapTexture;
   SDL_AudioSpec audioDesired;
   SDL_AudioStream *audioStream;
-  bool init;
 
-  init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   window = SDL_CreateWindow("wow", 1024, 768, SDL_WINDOW_OPENGL);
   SDL_SetWindowResizable(window, true);
   renderer = SDL_CreateRenderer(window, NULL);
@@ -63,8 +124,9 @@ int main()
   GameMemory.PermanentStorageSize = Megabytes(64);
   GameMemory.TransientStorageSize = Gigabytes(2);
 
-  GameMemory.PermanentStorage = mmap(NULL, GameMemory.PermanentStorageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  GameMemory.TransientStorage = mmap(NULL, GameMemory.TransientStorageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  uint64_t TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
+  GameMemory.PermanentStorage = mmap(NULL, TotalSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  GameMemory.TransientStorage = ((uint8_t *)GameMemory.PermanentStorage + GameMemory.PermanentStorageSize);
 
   if (GameMemory.PermanentStorage && GameMemory.TransientStorage)
   {
@@ -158,7 +220,7 @@ int main()
       uint64_t CounterElapsed = EndCounter - LastCounter;
       float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)PerfCountFrequency);
       float FPS = (float)PerfCountFrequency / (float)CounterElapsed;
-      // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaaaaggggs
+      // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaags
     }
   }
 

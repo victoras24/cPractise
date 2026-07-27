@@ -38,3 +38,5 @@ buffer[0] -> bytes 0x1000-0x1003
 buffer[1] -> bytes 0x1004-0x1007
 
 - seperation of platform layer and game layer. for example for keyboard inputs, the platform layer should inform the game layer what action should be done. 
+
+- in the day 18 we tried to synch the monitor refresh rate with the game frame rate. to be clear we didn't synch them but we made the frame rate to be steady, a step towards synch. if some frames take longer than the monitor refresh interval, we can miss the opportunity to present a new frame during that refresh, causing inconsistent motion.  so we need a variable at the start of the frame and then at the end (after we update, render) to know how many miliseconds elapsed. if that time was less than the target (the target for now is set from us), we calculate the remaining time and sleep only for that remaining duration. we set the CPU to "sleep mode", to rest or do any other tasks. for now we don't handle the case where the seconds elapsed for the frame to end is bigger than the target.

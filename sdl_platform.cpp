@@ -9,6 +9,8 @@
 #include "game.cpp"
 #include "hello.h"
 
+static uint64_t GlobalPerfCountFrequency;
+
 void PlatformFreeFileMemory(read_file_data FileData)
 {
   if (FileData.Contents)
@@ -90,6 +92,19 @@ void sdl_generate_audio(void *userdata, SDL_AudioStream *stream, int additional_
   SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
 };
 
+const SDL_DisplayMode *GetDisplayMode(SDL_Window *window)
+{
+  SDL_DisplayID DisplayId = SDL_GetDisplayForWindow(window);
+  const SDL_DisplayMode *DisplayMode = SDL_GetCurrentDisplayMode(DisplayId);
+  return DisplayMode;
+};
+
+float GetSecondsElapsed(uint64_t Start, uint64_t End)
+{
+  float res = ((float)(End - Start) / (float)GlobalPerfCountFrequency);
+  return res;
+}
+
 int main()
 {
   SDL_Window *window;
@@ -100,6 +115,11 @@ int main()
 
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   window = SDL_CreateWindow("wow", 1024, 768, SDL_WINDOW_OPENGL);
+
+  const SDL_DisplayMode *display_mode = GetDisplayMode(window);
+  int GameUpdateHz = display_mode->refresh_rate / 2;
+  float TargetSecondsElapsedPerFrame = 1.0f / GameUpdateHz;
+
   SDL_SetWindowResizable(window, true);
   renderer = SDL_CreateRenderer(window, NULL);
   uint8_t *PixelBuffer = (uint8_t *)mmap(NULL, 3145728, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -118,7 +138,7 @@ int main()
 
   SDL_ResumeAudioStreamDevice(audioStream);
 
-  uint64_t PerfCountFrequency = SDL_GetPerformanceFrequency();
+  GlobalPerfCountFrequency = SDL_GetPerformanceFrequency();
 
   game_memory GameMemory = {};
   GameMemory.PermanentStorageSize = Megabytes(64);
@@ -130,14 +150,14 @@ int main()
 
   if (GameMemory.PermanentStorage && GameMemory.TransientStorage)
   {
-
     game_input Input[2] = {};
     game_input *OldInput = &Input[0];
     game_input *CurrentInput = &Input[1];
 
+    uint64_t LastCounter = SDL_GetPerformanceCounter();
+
     while (window)
     {
-      uint64_t LastCounter = SDL_GetPerformanceCounter();
       SDL_Event event;
 
       // 1) Frame started with the button up or down?
@@ -207,20 +227,33 @@ int main()
           break;
         }
       }
-
       GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput);
+      SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
+      SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
+      SDL_RenderPresent(renderer);
+
+      float SecondsElapsedForFrame = GetSecondsElapsed(LastCounter, SDL_GetPerformanceCounter());
+
+      if (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame)
+      {
+        while (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame)
+        {
+          uint32_t SleepMS = (uint32_t)(1000.0f * (TargetSecondsElapsedPerFrame - SecondsElapsedForFrame));
+          SDL_Delay(SleepMS);
+
+          SecondsElapsedForFrame = GetSecondsElapsed(LastCounter, SDL_GetPerformanceCounter());
+        }
+      }
+
+#if 0
+      float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)GlobalPerfCountFrequency);
+      float FPS = (float)GlobalPerfCountFrequency / (float)CounterElapsed;
+      // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaags
+#endif
 
       game_input *TemporaryPointer = CurrentInput;
       CurrentInput = OldInput;
       OldInput = TemporaryPointer;
-      SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
-      SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
-      SDL_RenderPresent(renderer);
-      uint64_t EndCounter = SDL_GetPerformanceCounter();
-      uint64_t CounterElapsed = EndCounter - LastCounter;
-      float MSPerFrame = ((1000.0f * (float)CounterElapsed) / (float)PerfCountFrequency);
-      float FPS = (float)PerfCountFrequency / (float)CounterElapsed;
-      // printf("MSPerFrame: %fms, FPS: %f\n", MSPerFrame, FPS); laaaaags
     }
   }
 

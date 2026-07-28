@@ -236,11 +236,12 @@ int main()
 
       if (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame)
       {
-        while (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame)
-        {
-          uint32_t SleepMS = (uint32_t)(1000.0f * (TargetSecondsElapsedPerFrame - SecondsElapsedForFrame));
+        uint32_t SleepMS = (uint32_t)(1000.0f * (TargetSecondsElapsedPerFrame - SecondsElapsedForFrame));
+        if (SleepMS > 0)
           SDL_Delay(SleepMS);
 
+        while (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame)
+        {
           SecondsElapsedForFrame = GetSecondsElapsed(LastCounter, SDL_GetPerformanceCounter());
         }
       }

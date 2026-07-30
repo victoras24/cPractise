@@ -1,6 +1,3 @@
-#ifndef HELLO_H
-#define HELLO_H
-
 #include <stdint.h>
 #include <SDL3/SDL_audio.h>
 
@@ -35,15 +32,6 @@ bool PlatformWriteEntireFile(const char *Filename, void *Contents, uint32_t Cont
 
 typedef struct
 {
-  int XOffset;
-  int YOffset;
-  int BitmapWidth;
-  int BitmapHeight;
-  int ToneHz;
-} game_state;
-
-typedef struct
-{
   int HalfTransitionCount;
   bool IsEndedDown;
 } key_state;
@@ -72,6 +60,26 @@ typedef struct
   bool IsInitialiazed;
 } game_memory;
 
-void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, game_input *NewInput);
+typedef struct
+{
+  int XOffset;
+  int YOffset;
+  int BitmapWidth;
+  int BitmapHeight;
+  int ToneHz;
+} game_state;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+  typedef game_sound_buffer *game_generate_sound_buffer(game_sound_buffer *sound_buffer); // create function type
+  typedef void game_update_render(game_memory *GameMemory, uint8_t *Buffer, game_input *NewInput);
+
+  void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, game_input *NewInput);
+  game_sound_buffer *GenerateGameSoundBuffer(game_sound_buffer *sound_buffer);
+
+#ifdef __cplusplus
+}
 #endif

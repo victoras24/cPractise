@@ -1,7 +1,72 @@
-#include "hello.h"
+#include "game.h"
 #include <math.h>
+#include <sys/mman.h>
 
 static float currentPhase;
+
+void PlatformFreeFileMemory(read_file_data FileData)
+{
+  if (FileData.Contents)
+  {
+    munmap(FileData.Contents, FileData.ContentsSize);
+    FileData.Contents = NULL;
+    FileData.ContentsSize = 0;
+  }
+};
+
+read_file_data PlatformReadExistingFile(const char *FileLocation)
+{
+  read_file_data FileData = {};
+  FILE *File = fopen(FileLocation, "rb");
+  if (File)
+  {
+    fseek(File, 0L, SEEK_END);
+    FileData.ContentsSize = ftell(File);
+
+    rewind(File);
+
+    if (FileData.ContentsSize > 0)
+      FileData.Contents = mmap(NULL, FileData.ContentsSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (FileData.Contents)
+    {
+      size_t BytesRead = fread(FileData.Contents, 1, FileData.ContentsSize, File);
+
+      if (BytesRead != FileData.ContentsSize)
+      {
+        PlatformFreeFileMemory(FileData);
+      }
+    }
+
+    fclose(File);
+  }
+
+  return FileData;
+};
+
+bool PlatformWriteEntireFile(const char *FileLocation, void *Contents, uint32_t ContentsSize)
+{
+  bool Result = false;
+
+  FILE *File = fopen(FileLocation, "wb");
+
+  if (File)
+  {
+    if (Contents && ContentsSize > 0)
+    {
+      size_t BytesWritten = fwrite(Contents, 1, ContentsSize, File);
+
+      if (BytesWritten == ContentsSize)
+      {
+        Result = true;
+      }
+    }
+
+    fclose(File);
+  }
+
+  return Result;
+}
 
 void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
 {

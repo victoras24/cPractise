@@ -6,74 +6,32 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#include "game.cpp"
-#include "hello.h"
+#include <dlfcn.h>
+
+#include "game.h"
 
 static uint64_t GlobalPerfCountFrequency;
 
-void PlatformFreeFileMemory(read_file_data FileData)
+struct game_code
 {
-  if (FileData.Contents)
-  {
-    munmap(FileData.Contents, FileData.ContentsSize);
-    FileData.Contents = NULL;
-    FileData.ContentsSize = 0;
-  }
+  void *GameCodeDll;
+  game_update_render *GameUpdateAndRender;
+  game_generate_sound_buffer *GenerateGameSoundBuffer;
 };
 
-read_file_data PlatformReadExistingFile(const char *FileLocation)
+game_code LoadGameCode()
 {
-  read_file_data FileData = {};
-  FILE *File = fopen(FileLocation, "rb");
-  if (File)
+  game_code Result = {};
+
+  Result.GameCodeDll = dlopen("./build/game.so", RTLD_NOW);
+  if (Result.GameCodeDll)
   {
-    fseek(File, 0L, SEEK_END);
-    FileData.ContentsSize = ftell(File);
-
-    rewind(File);
-
-    if (FileData.ContentsSize > 0)
-      FileData.Contents = mmap(NULL, FileData.ContentsSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    if (FileData.Contents)
-    {
-      size_t BytesRead = fread(FileData.Contents, 1, FileData.ContentsSize, File);
-
-      if (BytesRead != FileData.ContentsSize)
-      {
-        PlatformFreeFileMemory(FileData);
-      }
-    }
-
-    fclose(File);
-  }
-
-  return FileData;
-};
-
-bool PlatformWriteEntireFile(const char *FileLocation, void *Contents, uint32_t ContentsSize)
-{
-  bool Result = false;
-
-  FILE *File = fopen(FileLocation, "wb");
-
-  if (File)
-  {
-    if (Contents && ContentsSize > 0)
-    {
-      size_t BytesWritten = fwrite(Contents, 1, ContentsSize, File);
-
-      if (BytesWritten == ContentsSize)
-      {
-        Result = true;
-      }
-    }
-
-    fclose(File);
+    Result.GameUpdateAndRender = (game_update_render *)dlsym(Result.GameCodeDll, "GameUpdateAndRender");
+    Result.GenerateGameSoundBuffer = (game_generate_sound_buffer *)dlsym(Result.GameCodeDll, "GenerateGameSoundBuffer");
   }
 
   return Result;
-}
+};
 
 void processKeyboardInputState(key_state *NewState, key_state *OldState, bool down)
 {
@@ -83,12 +41,15 @@ void processKeyboardInputState(key_state *NewState, key_state *OldState, bool do
 
 void sdl_generate_audio(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_count)
 {
+  game_code *GameCode = (game_code *)userdata;
+
+  int16_t *samples = (int16_t *)alloca(additional_amount);
   game_sound_buffer sound_buffer = {
-      .samples = (int16_t *)mmap(NULL, additional_amount * sizeof(int16_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0), // check the reason!
+      .samples = samples,
       .sampleRate = 48000,
       .frameCount = (int)(additional_amount / (sizeof(int16_t) * 2))};
 
-  game_sound_buffer *game_sound_buffer = GenerateGameSoundBuffer(&sound_buffer);
+  game_sound_buffer *game_sound_buffer = GameCode->GenerateGameSoundBuffer(&sound_buffer);
   SDL_PutAudioStreamData(stream, game_sound_buffer->samples, game_sound_buffer->frameCount * 2 * sizeof(int16_t));
 };
 
@@ -113,6 +74,7 @@ int main()
   SDL_AudioSpec audioDesired;
   SDL_AudioStream *audioStream;
 
+  game_code Game = LoadGameCode();
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   window = SDL_CreateWindow("wow", 1024, 768, SDL_WINDOW_OPENGL);
 
@@ -129,9 +91,9 @@ int main()
   audioDesired.format = SDL_AUDIO_S16;
   audioDesired.channels = 2;
 
-  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, sdl_generate_audio, NULL);
+  audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK | SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioDesired, sdl_generate_audio, &Game);
 
-  if (!window | !audioStream)
+  if (!window || !audioStream)
   {
     return 0;
   }
@@ -227,7 +189,8 @@ int main()
           break;
         }
       }
-      GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput);
+
+      Game.GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput);
       SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);
       SDL_RenderTexture(renderer, bitmapTexture, NULL, NULL);
       SDL_RenderPresent(renderer);

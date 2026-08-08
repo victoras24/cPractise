@@ -1,12 +1,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <sys/stat.h>
 #include <sys/mman.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <unistd.h>
 #include <dlfcn.h>
+#include <copyfile.h>
 
 #include "game.h"
 
@@ -17,20 +20,97 @@ struct game_code
   void *GameCodeDll;
   game_update_render *GameUpdateAndRender;
   game_generate_sound_buffer *GenerateGameSoundBuffer;
+  time_t LastTimeModified;
 };
+
+struct game_input_recording
+{
+  uint16_t FrameIndex;
+  game_input RecordedInputs[36000];
+  uint16_t RecordedFrameCount;
+  bool IsRecording;
+  bool IsReplaying;
+};
+
+void SdlStartRecordingInput() {
+
+};
+
+void SdlReplayRecordedInput() {};
+
+void CreateTempFile(const char *FromPath, const char *ToPath)
+{
+  if (copyfile(FromPath, ToPath, NULL, COPYFILE_ALL) == 0)
+  {
+    printf("Copied!\n");
+  }
+  else
+  {
+    printf("Not Copied!\n");
+  };
+}
+
+time_t GetLastTimeModified(const char *FileName)
+{
+  struct stat st;
+
+  if (stat(FileName, &st) == -1)
+  {
+    perror("stat");
+    return -1;
+  }
+  else
+  {
+    return st.st_mtime;
+  }
+}
 
 game_code LoadGameCode()
 {
+  struct stat st;
   game_code Result = {};
 
-  Result.GameCodeDll = dlopen("./build/game.so", RTLD_NOW);
+  if (stat("./build/tempGame.so", &st) == 0)
+    unlink("./build/tempGame.so");
+
+  CreateTempFile("./build/game.so", "./build/tempGame.so");
+
+  Result.GameCodeDll = dlopen("./build/tempGame.so", RTLD_NOW);
+
   if (Result.GameCodeDll)
   {
     Result.GameUpdateAndRender = (game_update_render *)dlsym(Result.GameCodeDll, "GameUpdateAndRender");
     Result.GenerateGameSoundBuffer = (game_generate_sound_buffer *)dlsym(Result.GameCodeDll, "GenerateGameSoundBuffer");
-  }
 
+    if (!Result.GameUpdateAndRender || !Result.GenerateGameSoundBuffer)
+    {
+      fprintf(stderr, "dlsym failed: %s\n", dlerror());
+      dlclose(Result.GameCodeDll);
+      Result.GameCodeDll = nullptr;
+    }
+  }
   return Result;
+};
+
+void ReloadGameCodeIfModified(game_code *Game)
+{
+  time_t time_modifiend = GetLastTimeModified("./build/game.so");
+
+  if (time_modifiend == -1)
+    return;
+
+  if (Game->LastTimeModified == 0)
+    Game->LastTimeModified = time_modifiend;
+
+  if (time_modifiend != Game->LastTimeModified)
+  {
+    game_code NewGame = LoadGameCode();
+    if (NewGame.GameCodeDll)
+    {
+      *Game = NewGame;
+      Game->LastTimeModified = time_modifiend;
+    }
+  }
 };
 
 void processKeyboardInputState(key_state *NewState, key_state *OldState, bool down)
@@ -73,6 +153,7 @@ int main()
   SDL_Texture *bitmapTexture;
   SDL_AudioSpec audioDesired;
   SDL_AudioStream *audioStream;
+  game_input_recording GameInputRecording = {};
 
   game_code Game = LoadGameCode();
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -120,11 +201,9 @@ int main()
 
     while (window)
     {
+      ReloadGameCodeIfModified(&Game);
       SDL_Event event;
 
-      // 1) Frame started with the button up or down?
-      // 2) Half transition count.
-      // 3) Frame ended with the button up or down?
       *CurrentInput = *OldInput;
       CurrentInput->MoveDown.HalfTransitionCount = 0;
       CurrentInput->MoveUp.HalfTransitionCount = 0;
@@ -150,6 +229,30 @@ int main()
             break;
           case SDL_SCANCODE_W:
             processKeyboardInputState(&CurrentInput->MoveUp, &OldInput->MoveUp, isDown);
+            break;
+          case SDL_SCANCODE_L:
+            if (GameInputRecording.IsRecording)
+            {
+              GameInputRecording.IsRecording = false;
+              GameInputRecording.FrameIndex = 0;
+              GameInputRecording.IsReplaying = true;
+              printf("RECORDING -> PLAYBACK (frames: %d)\n", GameInputRecording.RecordedFrameCount);
+            }
+            else if (GameInputRecording.IsReplaying)
+            {
+              GameInputRecording.IsReplaying = false;
+              GameInputRecording.FrameIndex = 0;
+              GameInputRecording.RecordedFrameCount = 0;
+              GameInputRecording.IsRecording = true;
+              printf("PLAYBACK -> RECORDING (overwriting)\n");
+            }
+            else
+            {
+              GameInputRecording.FrameIndex = 0;
+              GameInputRecording.RecordedFrameCount = 0;
+              GameInputRecording.IsRecording = true;
+              printf("IDLE -> RECORDING\n");
+            }
             break;
           default:
             break;
@@ -189,6 +292,22 @@ int main()
           break;
         }
       }
+
+      if (GameInputRecording.IsRecording)
+      {
+        GameInputRecording.RecordedInputs[GameInputRecording.FrameIndex] = *CurrentInput;
+        GameInputRecording.FrameIndex++;
+        GameInputRecording.RecordedFrameCount++;
+      };
+
+      if (GameInputRecording.FrameIndex < 36000)
+        if (GameInputRecording.IsReplaying)
+        {
+          *CurrentInput = GameInputRecording.RecordedInputs[GameInputRecording.FrameIndex];
+          GameInputRecording.FrameIndex++;
+          if (GameInputRecording.FrameIndex >= GameInputRecording.RecordedFrameCount)
+            GameInputRecording.FrameIndex = 0;
+        }
 
       Game.GameUpdateAndRender(&GameMemory, PixelBuffer, CurrentInput);
       SDL_UpdateTexture(bitmapTexture, NULL, PixelBuffer, 4096);

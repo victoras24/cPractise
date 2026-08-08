@@ -81,11 +81,34 @@ void RenderWeirdGradientBoxes(uint8_t *pixelBuffer, game_state *gameState)
       uint8_t Green = (y + gameState->YOffset);
       uint8_t Alpha = 255;
 
-      *Pixel++ = (Blue << 8) | (Green << 16) | Alpha;
+      *Pixel++ = (Blue << 8) | (Green << 8) | Alpha;
     }
     Row += Pitch;
   }
 };
+
+void RenderRectangle(game_state *gameState, uint8_t *pixelBuffer, int playerHeight, int playerWidth)
+{
+  int rectangleX = 100;
+  int rectangleY = 100;
+
+  rectangleX = rectangleX + gameState->XOffset;
+  rectangleY = rectangleY + gameState->YOffset;
+
+  int Pitch = gameState->BitmapWidth * 4;
+
+  uint8_t *Row = (rectangleY * Pitch) + pixelBuffer;
+
+  for (int y = rectangleY; y < rectangleY + playerHeight; y++)
+  {
+    uint32_t *Pixel = (uint32_t *)Row + rectangleX;
+    for (int x = rectangleX; x < rectangleX + playerWidth; x++)
+    {
+      *Pixel++ = (255 << 24) | (255 << 16) | (255 << 8) | 255;
+    }
+    Row += Pitch;
+  }
+}
 
 void direction_user_should_move(game_state *game_state, game_input *NewInput)
 {
@@ -157,4 +180,5 @@ void GameUpdateAndRender(game_memory *GameMemory, uint8_t *Buffer, game_input *N
 
   direction_user_should_move(GameState, NewInput);
   RenderWeirdGradientBoxes(Buffer, GameState);
+  RenderRectangle(GameState, Buffer, 10, 10);
 };
